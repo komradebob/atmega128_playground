@@ -1,14 +1,15 @@
-#
-# Simple chaser light example for the atmega128 in an STK500 development board
-#
-# 11/8/2010 R.M. Bowness
-#
+//
+// Simple chaser light example for the atmega128 in an STK500 development board
+//
+// 11/8/2010 R.M. Bowness
+//
+//
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#define F_CPU 100000UL	      // Sets up the default speed for delay.h
-//#define F_CPU 32000UL         // Sets up the default speed for delay.h 
+//#define F_CPU 100000UL	      // Sets up the default speed for delay.h
+#define F_CPU 32000UL         // Sets up the default speed for delay.h 
 #include <util/delay.h>
 
 int main()
