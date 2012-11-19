@@ -8,8 +8,8 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-//#define F_CPU 100000UL	      // Sets up the default speed for delay.h
-#define F_CPU 32000UL         // Sets up the default speed for delay.h 
+#define F_CPU 19660800UL	      // Sbts up the default speed for delay.h
+//#define F_CPU 32000UL         // Sets up the default speed for delay.h 
 #include <util/delay.h>
 
 int main()
@@ -24,7 +24,7 @@ int main()
 		
 			PORTC &= (~_BV(i));
 
-			_delay_ms(2048);
+			_delay_ms(1024);
 			
 			PORTC |= (_BV(i));
 
