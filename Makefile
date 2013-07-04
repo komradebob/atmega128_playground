@@ -24,8 +24,9 @@
 # FUSES ........ Parameters for avrdude to flash the fuses appropriately.
 
 DEVICE     ?= atmega128
-CLOCK      = 32000
+CLOCK      = 19660800
 PROGRAMMER ?= -c buspirate -P /dev/tty.usbserial-AH00MQKI
+#PROGRAMMER ?= -c stk500 -P /dev/tty.usbserial8
 OBJECTS    = example.o
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m

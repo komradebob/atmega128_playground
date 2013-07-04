@@ -1,0 +1,75 @@
+//
+// Simple chaser light example for the atmega128 in an STK500 development board
+//
+// 11/8/2010 R.M. Bowness
+//
+//
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+//#define F_CPU 19660800UL	      // Sbts up the default speed for delay.h
+//#define F_CPU 32000UL         // Sets up the default speed for delay.h 
+
+#define DEBOUNCE	100
+
+#define TRUE 1
+#define FALSE 0
+
+#include <util/delay.h>
+
+int main()
+{
+	char i;
+	char SCAN,result=0,check_switches();
+	
+
+	DDRC = 255;
+	PORTC=255;
+	DDRA=0;
+	SCAN=TRUE;	
+while(1) {
+	while(SCAN) {
+		for(i=0;i<8;i++) {		// scan the LEDs
+			PORTC &= (~_BV(i));
+
+			_delay_ms(512);
+			
+			PORTC |= (_BV(i));
+
+			result=check_switches();
+			if (result != 0 ) {
+				SCAN = FALSE;
+				break;
+			}
+		}
+			// if switches !=0 turn on the switch that was hit adn loop looking at the switches. If switch 0 is hit, go back to scanning, else light up the new switch.
+	}
+	if (_BV(result) == 1) 			// Hit button 0  to return to scan more
+		SCAN = TRUE;
+	else {				// Otherwise
+		if(result != 0){		// light the selected LED
+			PORTC = (_BV(result));
+			result = check_switches();
+		}
+	}				// end else
+	}					// end while(1)
+}
+
+///////////////////////////////////////////////////////////////////////
+
+char check_switches()
+{
+char result;
+	if (PINA != 0) {
+//		_delay_ms(DEBOUNCE);
+		if (PINA != 0) {
+			PORTC = PINA;
+			return(PINA);
+		}
+		else
+			return(0);
+	}
+	else
+		return(0);
+}
