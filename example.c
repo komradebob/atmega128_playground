@@ -20,18 +20,6 @@
 #define USART_BAUDRATE 9600    // Baud Rate value
 #define BAUD_PRESCALE (((F_CPU / (USART_BAUDRATE * 16UL))) - 1)
 
-void usart_init() {
-
-//Enable communication in duplex mode
-UCSR1A = (1 << U2X1);
-UCSR1B |= (1 << RXEN1) | (1 << TXEN1);   // Turn on the transmission and reception circuitry
-UCSR1C &= ~(1 << UMSEL1);
-UCSR1C |= (1<<USBS1) | (1 << UCSZ10) | (1 << UCSZ11);
-
-UBRR1L = BAUD_PRESCALE;                 // Load lower 8-bits of the baud rate value into the low byte of the UBRR register
-UBRR1H = (BAUD_PRESCALE >> 8);          // Load upper 8-bits of the baud rate value.. 
-}
-
 #define DEBOUNCE	100
 
 #define TRUE 1
@@ -41,30 +29,44 @@ UBRR1H = (BAUD_PRESCALE >> 8);          // Load upper 8-bits of the baud rate va
 #define SINGLE 0x1
 #define SCAN_VOICE 0x2
 #define SCAN_KEY 0x3
+#define PROGRAM 0x4
 
 #define MAX_RADIOS 7
 
+#define RADIO_SWITCH_PORT PORTC
+#define XMIT_PORT PORTD
+#define XMIT_BIT 0x01
+#define START_STOP_PORT PORTB
+#define START_STOP_BIT 0x01
+#define PROGRAM_PORT PORTB
+#define PROGRAM_BIT 0x02
 
 #define D_COUNT	2000
-unsigned long global_count;
 
 #include <util/delay.h>
 
-unsigned char active_radio, radio_status[MAX_RADIOS], single_op(unsigned char), scan(unsigned char);
+void read_switches();
+
+unsigned char xmit_status, radio_switches, start_stop, program_switch, active_radio, radio_status[MAX_RADIOS], program(unsigned char), single_op(unsigned char), scan(unsigned char);
 
 int main()
 {
-	unsigned char mode;
+	unsigned char result, mode;
 
+			// Ports - pin high is off or inactive, low is active or selected.
 	mode = SINGLE;
-	DDRC = 255;
-	PORTC=255;
-	DDRA=0;
+	DDRA=0;		// PORT A is input from radio switches
+	DDRB=0;		// PORT B is input 
+	DDRC = 0xff;	// set port C for output
+	DDRD=0;		// PORT D is input from voice keyer PIND.0
+	DDRE = 0xff;		// PORT E is input from random test switches
 
-	PORTC = 255;	// Light up all the LEDs
-	PORTA = 0xff;	// set pullup resistors
+	PORTA = 0xff;	// set pullup resistors on port A - switches
+	PORTB = 0xff;	// set pullup resistors on port E - switches
+	PORTC = 0xff;	// PORT C is output for LEDs, Turn them all off.
+	PORTD = 0xff;	// set pullup resistors on port D - Input from voice keyer on PIN.0
+	PORTE = 0xff;	// set pullup resistors on port E 
 
-	usart_init();
 
 while(1) {
 
@@ -77,14 +79,68 @@ while(1) {
 		case SCAN_KEY:
 			mode = scan(mode);
 			break;
+		case PROGRAM:
+			mode = program(mode);
+			break;
 		default:
 			break;
 	}
+	
+//	read_switches();
+//	if(program_switch == TRUE)
+//		mode = PROGRAM;
+//	if((start_stop == TRUE) && (mode == SCAN_VOICE))
+//		mode = SINGLE;
 	
     }
 
 }
 
+///////////////////////////////////////////////////////////////////////
+// void read_switches()
+// always returns - Sets xmit_status,radio_switches, start_stop, program globals
+///////////////////////////////////////////////////////////////////////
+void read_switches(void)
+
+{
+
+	radio_switches = RADIO_SWITCH_PORT;
+
+	start_stop = PORTB  & START_STOP_BIT;
+
+	program_switch = PORTB  & PROGRAM_BIT;
+
+	xmit_status = PORTD & XMIT_BIT;
+}
+
+///////////////////////////////////////////////////////////////////////
+// program() Set the active radios
+// returns SINGLE if complete, otherwise returns the mode it was called with
+///////////////////////////////////////////////////////////////////////
+unsigned char program(unsigned char mode)
+{
+
+unsigned char result;
+
+	result = ~PORTC;
+
+	PINA = result;
+	mode = PROGRAM;
+
+	return(mode);
+}
+
+///////////////////////////////////////////////////////////////////////
+// status_xmit() returns the status of the xmit bit
+// returns TRUE if transmitting, FALSE if not
+///////////////////////////////////////////////////////////////////////
+int status_xmit()
+{
+	if((PIND & 0x01) == 0)
+		return(TRUE);
+	else
+		return(FALSE);
+}
 
 ///////////////////////////////////////////////////////////////////////
 // check_mode_switch() Check to see if the mode switch is depressed
@@ -94,9 +150,9 @@ int check_mode_switch()
 {
 
 	if (( PINA & 0x1) == 0) 
-		return(1);
+		return(TRUE);
 	else
-		return(0);
+		return(FALSE);
 }
 	
 
@@ -128,20 +184,31 @@ unsigned char scan(unsigned char mode)
 {
 
 int i;
-unsigned char result;
+unsigned char radio_switches, start_stop, txmit, result;
 
+//	Basic logic/flow
+//	increment the active radio, if it is more than the MAX_RADIOS, reset to 1
+//
+// 	read the radio switches & start/stop
+//	if start/stop == stop, then stop, set mode = SINGLE and return else
+//	if pind.0 is low and pina is all high, then return else
+//	if pind.0 is high and pina is all high, move to next radio and return else
+//	if pina is not all high, stop, set active_radio from pina, set mode = SINGLE, and return
+//	start/stop = start, pina = all high, pind = low, return Playing msg now.
+
+
+	
+
+	
 	active_radio++;
 	if (active_radio > MAX_RADIOS)
 		active_radio = 1;
 
-	if(global_count > 188000) {
-		PORTC = ~((unsigned char)1<<active_radio);
-		global_count = 0;
-	}
-	else
-		global_count++;
+	PORTC = ~((unsigned char)1<<active_radio);
+	_delay_ms(200);
 
-	result = PINA;
+	while((PIND & 0x1) == 1) 
+		result = PINA;
 
 	if(result != 255) {
 		mode = SINGLE;
@@ -151,3 +218,4 @@ unsigned char result;
 	return(mode);
 	
 }
+
